@@ -6,14 +6,14 @@ import org.apache.spark.sql._
 trait SharedSparkContext {
 
 
-  var sparkSession: SparkSession = {
+  var spark: SparkSession = {
     val conf = new SparkConf().setAppName("megasparkdiff")
       .setMaster("local[*]")
       .set("spark.driver.host", "localhost")
       .set("spark.ui.enabled", "true") //disable spark UI
-    sparkSession = SparkSession.builder.config(conf).getOrCreate()
-    sparkSession.sparkContext.setLogLevel("warn")
-    sparkSession
+    spark = SparkSession.builder.config(conf).getOrCreate()
+    spark.sparkContext.setLogLevel("warn")
+    spark
   }
 
 
@@ -25,7 +25,7 @@ trait SharedSparkContext {
   }
 
   protected object sqlImplicits extends SQLImplicits {
-    protected override def _sqlContext: SQLContext = sparkSession.sqlContext
+    protected override def _sqlContext: SQLContext = spark.sqlContext
   }
 
 }

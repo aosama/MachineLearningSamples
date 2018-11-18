@@ -40,8 +40,8 @@ class SparkFunSuite
 
   implicit class SequenceImprovements(seq: Seq[Row]) {
     def toDf(schema: StructType): DataFrame = {
-      val rowRdd = sparkSession.sparkContext.parallelize(seq)
-      val df = sparkSession.createDataFrame(rowRdd, schema)
+      val rowRdd = spark.sparkContext.parallelize(seq)
+      val df = spark.createDataFrame(rowRdd, schema)
       return df
     }
   }
