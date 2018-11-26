@@ -5,14 +5,12 @@ import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, Deci
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.sql.DataFrame
-import org.ibrahim.ezmachinelearning.DecisionTreeShapeTypeExample.spark
 
 object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkContext {
 
   import sqlImplicits._
 
   def main(args: Array[String]): Unit = {
-
 
     val data: DataFrame = Seq(
       (9,"BabyChair"),

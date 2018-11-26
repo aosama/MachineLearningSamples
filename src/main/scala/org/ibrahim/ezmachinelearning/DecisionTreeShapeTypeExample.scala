@@ -22,7 +22,7 @@ object DecisionTreeShapeTypeExample extends SharedSparkContext {
       (17,"chair"),
       (18,"chair"),
       (19,"chair"),
-      (18,"table"),
+      (18,"chair"),
       (29,"table"),
       (30,"table"),
       (31,"table"),
