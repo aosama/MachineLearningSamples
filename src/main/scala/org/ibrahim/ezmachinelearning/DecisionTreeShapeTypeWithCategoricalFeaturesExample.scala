@@ -3,15 +3,16 @@ package org.ibrahim.ezmachinelearning
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
+import org.apache.spark.sql.DataFrame
+import org.ibrahim.ezmachinelearning.DecisionTreeShapeTypeExample.spark
 
-
-object DecisionTreeShapeTypeExample extends SharedSparkContext {
+object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkContext {
 
   import sqlImplicits._
 
   def main(args: Array[String]): Unit = {
+
 
     val data: DataFrame = Seq(
       (9,"BabyChair"),
@@ -37,8 +38,21 @@ object DecisionTreeShapeTypeExample extends SharedSparkContext {
       .setOutputCol("indexedLabel")
       .fit(data)
 
+    //    //Categorical Features
+    //    val categoricalFeatures = Seq("equalsides")
+    //
+    //    val categoricalFeaturesIndexer = new StringIndexer()
+    //      .setInputCol("equalsides")
+    //      .setOutputCol("indexequalsides")
+    //
+    //    val categoricalFeaturesEncoder = new OneHotEncoderEstimator()
+    //      .setInputCols(Seq("indexequalsides").toArray)
+    //      .setOutputCols(Seq("onehotequalsides").toArray)
+
+
     //Continous Features
     val continousFeatures = Seq("height")
+
 
     val featureAssembler = new VectorAssembler()
       .setInputCols(continousFeatures.toArray)
@@ -64,6 +78,7 @@ object DecisionTreeShapeTypeExample extends SharedSparkContext {
 
     // Train model. This also runs the indexers.
     val model: PipelineModel = pipeline.fit(trainingData)
+
 
     // Make predictions.
     val predictions = model.transform(testData)
