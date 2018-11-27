@@ -6,7 +6,7 @@ import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.sql.functions
 
-object DecisionTreeCensusIncome extends SharedSparkContext {
+object DTCensusIncomeExample extends SharedSparkContext {
 
   def main(args: Array[String]): Unit = {
     val categoricalFields = Seq(1, 3, 5, 6, 7, 8, 9, 13)
