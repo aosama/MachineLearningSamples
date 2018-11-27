@@ -16,3 +16,8 @@ How to get a stratified sample so the test and train datasets are sampled accros
 
 ### [Decision Tree with Categorical Feature in the DataSet](https://github.com/aosama/MachineLearningSamples/blob/master/src/main/scala/org/ibrahim/ezmachinelearning/DTShapeTypeWithCategoricalFeaturesExample.scala)
 How to index and encode categorical features.
+
+
+## Data Sets References
+
+#### [Default of Credit Card Clients DataSet](https://archive.ics.uci.edu/ml/datasets/default+of+credit+card+clients)

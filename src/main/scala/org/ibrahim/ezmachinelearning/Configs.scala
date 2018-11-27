@@ -2,7 +2,7 @@ package org.ibrahim.ezmachinelearning
 
 object Configs {
 
-  lazy val libsvmPath = getClass.getResource("/sample_libsvm_data.txt").getPath
+  lazy val defaultOfCreditCardClientsCsv = getClass.getResource("/default_of_credit_card_clients.csv").getPath
 
 
 }

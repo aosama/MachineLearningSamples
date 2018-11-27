@@ -40,20 +40,11 @@
 
     <dependencies>
 
-        <!--Apache commons library-->
+        <!-- https://mvnrepository.com/artifact/com.crealytics/spark-excel -->
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <!-- Used for base-64 encoding for HTTP basic authentication (which we need to access Jenkins). -->
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.11</version>
-            <scope>compile</scope>
+            <groupId>com.crealytics</groupId>
+            <artifactId>spark-excel_2.11</artifactId>
+            <version>0.10.2</version>
         </dependency>
 
         <!--Scala-->
