@@ -23,3 +23,8 @@ Uses the Census Income data set found here (first line from adult.test file remo
 
 Census Income data set citation:
 Dua, D. and Karra Taniskidou, E. (2017). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
+
+
+## Data Sets References
+
+#### [Default of Credit Card Clients DataSet](https://archive.ics.uci.edu/ml/datasets/default+of+credit+card+clients)
