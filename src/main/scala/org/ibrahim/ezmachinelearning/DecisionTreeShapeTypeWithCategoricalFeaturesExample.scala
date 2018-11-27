@@ -5,6 +5,7 @@ import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, Deci
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.types.DoubleType
 
 object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkContext {
 
@@ -21,7 +22,7 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
       (17,"chair"),
       (18,"chair"),
       (19,"chair"),
-      (18,"table"),
+      (18,"chair"),
       (29,"table"),
       (30,"table"),
       (31,"table"),
@@ -57,7 +58,7 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
       .setOutputCol("features")
 
     // Split the data into training and test sets (30% held out for testing).
-    val Array(trainingData, testData) = data.randomSplit(Array(0.8, 0.2))
+    val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3))
 
     // Train a DecisionTree model.
     val dt = new DecisionTreeClassifier()
@@ -95,7 +96,12 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
     val treeModel = model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
     println(s"Learned classification tree model:\n ${treeModel.toDebugString}")
     // $example off$
-
+    predictions.show(false)
     spark.stop()
+
+
+    val analysisDataDF = spark.range(1 , 30).toDF("height")
+      .withColumn("height" , 'height.cast(DoubleType))
+
   }
 }

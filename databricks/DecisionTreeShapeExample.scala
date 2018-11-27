@@ -91,3 +91,14 @@ println(s"Test Error = ${(1.0 - accuracy)}")
 
 val treeModel = model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
 println(s"Learned classification tree model:\n ${treeModel.toDebugString}")
+
+// COMMAND ----------
+
+import org.apache.spark.sql.types.DoubleType
+val analysisDataDF = spark.range(0 , 40).toDF("height")
+      .withColumn("height" , 'height.cast(DoubleType))
+
+// COMMAND ----------
+
+val opDf = model.transform(analysisDataDF)
+display(opDf)
