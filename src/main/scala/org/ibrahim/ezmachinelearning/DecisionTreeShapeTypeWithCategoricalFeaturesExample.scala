@@ -98,10 +98,5 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
     // $example off$
     predictions.show(false)
     spark.stop()
-
-
-    val analysisDataDF = spark.range(1 , 30).toDF("height")
-      .withColumn("height" , 'height.cast(DoubleType))
-
   }
 }
