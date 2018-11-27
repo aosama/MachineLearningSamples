@@ -3,11 +3,11 @@ package org.ibrahim.ezmachinelearning
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.ml.feature._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkContext {
+
+object DTShapeTypeExample extends SharedSparkContext {
 
   import sqlImplicits._
 
@@ -37,28 +37,15 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
       .setOutputCol("indexedLabel")
       .fit(data)
 
-    //    //Categorical Features
-    //    val categoricalFeatures = Seq("equalsides")
-    //
-    //    val categoricalFeaturesIndexer = new StringIndexer()
-    //      .setInputCol("equalsides")
-    //      .setOutputCol("indexequalsides")
-    //
-    //    val categoricalFeaturesEncoder = new OneHotEncoderEstimator()
-    //      .setInputCols(Seq("indexequalsides").toArray)
-    //      .setOutputCols(Seq("onehotequalsides").toArray)
-
-
     //Continous Features
     val continousFeatures = Seq("height")
-
 
     val featureAssembler = new VectorAssembler()
       .setInputCols(continousFeatures.toArray)
       .setOutputCol("features")
 
     // Split the data into training and test sets (30% held out for testing).
-    val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3))
+    val Array(trainingData, testData) = data.randomSplit(Array(0.8, 0.2))
 
     // Train a DecisionTree model.
     val dt = new DecisionTreeClassifier()
@@ -78,7 +65,6 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
     // Train model. This also runs the indexers.
     val model: PipelineModel = pipeline.fit(trainingData)
 
-
     // Make predictions.
     val predictions = model.transform(testData)
 
@@ -96,12 +82,7 @@ object DecisionTreeShapeTypeWithCategoricalFeaturesExample extends SharedSparkCo
     val treeModel = model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
     println(s"Learned classification tree model:\n ${treeModel.toDebugString}")
     // $example off$
-    predictions.show(false)
+
     spark.stop()
-
-
-    val analysisDataDF = spark.range(1 , 30).toDF("height")
-      .withColumn("height" , 'height.cast(DoubleType))
-
   }
 }

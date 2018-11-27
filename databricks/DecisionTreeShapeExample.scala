@@ -102,3 +102,8 @@ val analysisDataDF = spark.range(0 , 40).toDF("height")
 
 val opDf = model.transform(analysisDataDF)
 display(opDf)
+
+// COMMAND ----------
+
+val tree = model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
+display(tree)

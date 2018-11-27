@@ -3,16 +3,14 @@ package org.ibrahim.ezmachinelearning
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
+import org.apache.spark.sql.DataFrame
 
-
-object DecisionTreeShapeTypeExample extends SharedSparkContext {
+object DTShapeTypeStratifiedExamples extends SharedSparkContext {
 
   import sqlImplicits._
 
   def main(args: Array[String]): Unit = {
-
     val data: DataFrame = Seq(
       (9,"BabyChair"),
       (10,"BabyChair"),
@@ -30,6 +28,11 @@ object DecisionTreeShapeTypeExample extends SharedSparkContext {
       (30,"table"),
       (31,"table")).toDF("height","shape")
 
+
+    val fractions = Map("BabyChair" -> 0.8, "chair" -> 0.8, "table" -> 0.8)
+    val trainingData = data.stat.sampleBy("shape" , fractions, 100l)
+    val testData = data.except(trainingData)
+
     // Index labels, adding metadata to the label column.
     // Fit on whole dataset to include all labels in index.
     val labelIndexer = new StringIndexer()
@@ -43,9 +46,6 @@ object DecisionTreeShapeTypeExample extends SharedSparkContext {
     val featureAssembler = new VectorAssembler()
       .setInputCols(continousFeatures.toArray)
       .setOutputCol("features")
-
-    // Split the data into training and test sets (30% held out for testing).
-    val Array(trainingData, testData) = data.randomSplit(Array(0.8, 0.2))
 
     // Train a DecisionTree model.
     val dt = new DecisionTreeClassifier()
