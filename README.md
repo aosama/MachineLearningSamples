@@ -27,8 +27,9 @@ Uses the Census Income data set.
 
 ## Data Sets References
 
-#### [Census Income DataSet](http://archive.ics.uci.edu/ml/datasets/Census+Income) - First line from adult.test file removed for loading into Spark.
-#### Census Income data set citation:
+#### [Census Income DataSet](http://archive.ics.uci.edu/ml/datasets/Census+Income)
+First line from adult.test file removed for loading into Spark.
+Census Income data set citation:
 Dua, D. and Karra Taniskidou, E. (2017). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
 
 #### [Default of Credit Card Clients DataSet](https://archive.ics.uci.edu/ml/datasets/default+of+credit+card+clients)
