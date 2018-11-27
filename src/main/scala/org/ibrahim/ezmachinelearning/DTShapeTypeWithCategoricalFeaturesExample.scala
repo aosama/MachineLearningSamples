@@ -100,7 +100,5 @@ object DTShapeTypeWithCategoricalFeaturesExample extends SharedSparkContext {
     predictions.show(false)
     spark.stop()
 
-    val tree_json = new SparkMLTree(treeModel).toJsonPlotFormat()
-    println(tree_json)
   }
 }
