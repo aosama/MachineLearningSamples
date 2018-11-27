@@ -16,3 +16,6 @@ How to get a stratified sample so the test and train datasets are sampled accros
 
 ### [Decision Tree with Categorical Feature in the DataSet](https://github.com/aosama/MachineLearningSamples/blob/master/src/main/scala/org/ibrahim/ezmachinelearning/DTShapeTypeWithCategoricalFeaturesExample.scala)
 How to index and encode categorical features.
+
+### [Decision Tree Multiple Categorical and Continuous Features in the DataSet](https://github.com/aosama/MachineLearningSamples/blob/master/src/main/scala/org/ibrahim/ezmachinelearning/DTCensusIncomeExample.scala.scala)
+How to handle multiple categorical and continuous features on a real-life data set.
