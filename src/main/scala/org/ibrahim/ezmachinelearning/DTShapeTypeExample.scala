@@ -69,7 +69,7 @@ object DTShapeTypeExample extends SharedSparkContext {
     val predictions = model.transform(testData)
 
     // Select example rows to display.
-    predictions.select("predictedLabel", "indexedLabel", "features").show(5)
+    predictions.select("predictedLabel", "indexedLabel", "features").show(false)
 
     // Select (prediction, true label) and compute test error.
     val evaluator = new MulticlassClassificationEvaluator()
