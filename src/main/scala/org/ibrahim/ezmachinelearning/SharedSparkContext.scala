@@ -10,7 +10,7 @@ trait SharedSparkContext {
     val conf = new SparkConf().setAppName("megasparkdiff")
       .setMaster("local[*]")
       .set("spark.driver.host", "localhost")
-      .set("spark.ui.enabled", "true") //disable spark UI
+      .set("spark.ui.enabled", "false") //disable spark UI
     spark = SparkSession.builder.config(conf).getOrCreate()
     spark.sparkContext.setLogLevel("warn")
     spark
