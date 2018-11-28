@@ -4,7 +4,7 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
-import org.apache.spark.sql.functions
+import org.apache.spark.sql.{DataFrame, functions}
 
 object DTCensusIncomeExample extends SharedSparkContext {
 
@@ -44,9 +44,9 @@ object DTCensusIncomeExample extends SharedSparkContext {
     // Create object to convert categorical values to index values
     val categoricalIndexerArray =
       for (i <- categoricalFields)
-      yield new StringIndexer()
-        .setInputCol(fields(i))
-        .setOutputCol(fields(i) + "Indexed")
+        yield new StringIndexer()
+          .setInputCol(fields(i))
+          .setOutputCol(fields(i) + "Indexed")
 
     // Convert continuous values from string to double
     for (i <- continuousFields) {
@@ -79,7 +79,8 @@ object DTCensusIncomeExample extends SharedSparkContext {
       .setLabels(labelIndexer.labels)
 
     // Array of stages to run in pipeline
-    val stageArray = Array(labelIndexer) ++ categoricalIndexerArray ++ Array(vectorAssembler, dt, labelConverter)
+    val indexerArray = Array(labelIndexer) ++ categoricalIndexerArray
+    val stageArray = indexerArray ++ Array(vectorAssembler, dt, labelConverter)
 
     val pipeline = new Pipeline()
       .setStages(stageArray)
@@ -96,6 +97,14 @@ object DTCensusIncomeExample extends SharedSparkContext {
       .select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
       .where("indexedLabel != prediction")
     wrongPredictions.show()
+
+    // Show the label and all the categorical features mapped to indexes
+    val indexedData = new Pipeline()
+      .setStages(indexerArray)
+      .fit(trainingData)
+      .transform(trainingData)
+    indexedData.select("indexedLabel", "label").distinct().sort("indexedLabel").show()
+    showCategories(indexedData, fields, categoricalFields)
 
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("indexedLabel")
@@ -116,5 +125,12 @@ object DTCensusIncomeExample extends SharedSparkContext {
         .replace("feature " + i + " ", fields(featureFieldIndexes(i)) + " ")
 
     println(s"Learned classification tree model:\n $treeModelString")
+  }
+
+  def showCategories(df: DataFrame, fields: Seq[String], categoricalFieldIndexes: Seq[Int]): Unit = {
+    for (i <- categoricalFieldIndexes) {
+      val colName = fields(i)
+      df.select(colName + "Indexed", colName).distinct().sort(colName + "Indexed").show(100)
+    }
   }
 }
