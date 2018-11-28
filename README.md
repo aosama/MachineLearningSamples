@@ -6,6 +6,10 @@ This repo hosts variety of examples based on Apache Spark MLIB.
 
 ### [Decision Tree](https://github.com/aosama/MachineLearningSamples/blob/master/databricks/DecisionTreeShapeExample.scala)
 
+### [Census Income Decision Tree](https://github.com/aosama/MachineLearningSamples/blob/master/databricks/CensusIncomeDecisionTree.scala)
+
+### [Census Income Random Decision Forest](https://github.com/aosama/MachineLearningSamples/blob/master/databricks/CensusIncomeDecisionTree.scala)
+
 ## Scala IDE Based Examples
 
 ### [Decision Tree](https://github.com/aosama/MachineLearningSamples/blob/master/src/main/scala/org/ibrahim/ezmachinelearning/DTShapeTypeExample.scala)
