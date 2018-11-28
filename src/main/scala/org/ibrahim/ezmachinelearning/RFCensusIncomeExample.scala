@@ -1,13 +1,13 @@
 package org.ibrahim.ezmachinelearning
 
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, DecisionTreeClassifier}
+import org.apache.spark.ml.classification.{RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.{DataFrame, functions}
 
-object DTCensusIncomeExample extends SharedSparkContext {
+object RFCensusIncomeExample extends SharedSparkContext {
 
   def main(args: Array[String]): Unit = {
     val fields = Seq(
@@ -56,8 +56,8 @@ object DTCensusIncomeExample extends SharedSparkContext {
       .setInputCols((categoricalFieldIndexes.map(i => fields(i) + "Indexed") ++ continuousFieldIndexes.map(i => fields(i))).toArray)
       .setOutputCol("features")
 
-    // Create decision tree
-    val dt = new DecisionTreeClassifier()
+    // Create random decision forest
+    val rf = new RandomForestClassifier()
       .setLabelCol("indexedLabel")
       .setFeaturesCol("features")
       .setMaxBins(42) // Since feature "native-country" contains 42 distinct values, need to increase max bins.
@@ -70,7 +70,7 @@ object DTCensusIncomeExample extends SharedSparkContext {
 
     // Array of stages to run in pipeline
     val indexerArray = Array(labelIndexer) ++ categoricalIndexerArray
-    val stageArray = indexerArray ++ Array(vectorAssembler, dt, labelConverter)
+    val stageArray = indexerArray ++ Array(vectorAssembler, rf, labelConverter)
 
     val pipeline = new Pipeline()
       .setStages(stageArray)
@@ -106,12 +106,12 @@ object DTCensusIncomeExample extends SharedSparkContext {
 
     val metrics = new MulticlassMetrics(
       predictions.select("indexedLabel", "prediction")
-      .rdd.map(x => (x.getDouble(0), x.getDouble(1)))
+        .rdd.map(x => (x.getDouble(0), x.getDouble(1)))
     )
 
     println(s"Confusion matrix:\n ${metrics.confusionMatrix}\n")
 
-    val treeModel = model.stages(stageArray.length - 2).asInstanceOf[DecisionTreeClassificationModel]
+    val treeModel = model.stages(stageArray.length - 2).asInstanceOf[RandomForestClassificationModel]
 
     // Print out the tree with actual column names for features
     var treeModelString = treeModel.toDebugString
@@ -121,7 +121,7 @@ object DTCensusIncomeExample extends SharedSparkContext {
       treeModelString = treeModelString
         .replace("feature " + i + " ", fields(featureFieldIndexes(i)) + " ")
 
-    println(s"Learned classification tree model:\n $treeModelString")
+    println(s"Learned classification forest model:\n $treeModelString")
   }
 
   def formatData(df: DataFrame, fields: Seq[String], continuousFieldIndexes: Seq[Int]): DataFrame = {
