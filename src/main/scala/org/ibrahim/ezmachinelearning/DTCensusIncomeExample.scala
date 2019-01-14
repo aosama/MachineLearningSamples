@@ -6,6 +6,12 @@ import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.{DataFrame, functions}
+import vegas.sparkExt._
+import vegas.spec.Spec.Bin
+import vegas.{Line, Quantitative, Vegas}
+import vegas.DSL.SpecBuilder
+import vegas._
+import vegas.data.External._
 
 object DTCensusIncomeExample extends SharedSparkContext {
 
@@ -37,6 +43,15 @@ object DTCensusIncomeExample extends SharedSparkContext {
     // Format the data
     trainingData = formatData(trainingData, fields, continuousFieldIndexes)
     testData = formatData(testData, fields, continuousFieldIndexes)
+
+    trainingData.printSchema()
+
+    val plot = Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(600d)).
+      withDataFrame(trainingData).
+      mark(Line).
+      encodeX("age", Quantitative, bin=Bin(step=Option.apply(1.0d) , maxbins=Option.apply(1.0d) )).
+      encodeY("capital-gain" )
+      .show
 
     // Create object to convert categorical values to index values
     val categoricalIndexerArray =
