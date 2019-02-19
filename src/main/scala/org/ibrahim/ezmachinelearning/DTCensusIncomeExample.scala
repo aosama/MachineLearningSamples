@@ -7,11 +7,9 @@ import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssemble
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.{DataFrame, functions}
 import vegas.sparkExt._
-import vegas.spec.Spec.Bin
-import vegas.{Line, Quantitative, Vegas}
-import vegas.DSL.SpecBuilder
+import vegas.{AggOps, Line, Quantitative, Vegas}
+import org.apache.spark.ml.linalg.Vector
 import vegas._
-import vegas.data.External._
 
 object DTCensusIncomeExample extends SharedSparkContext {
 
@@ -45,13 +43,6 @@ object DTCensusIncomeExample extends SharedSparkContext {
     testData = formatData(testData, fields, continuousFieldIndexes)
 
     trainingData.printSchema()
-
-    val plot = Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(600d)).
-      withDataFrame(trainingData).
-      mark(Line).
-      encodeX("age", Quantitative, bin=Bin(step=Option.apply(1.0d) , maxbins=Option.apply(1.0d) )).
-      encodeY("capital-gain" )
-      .show
 
     // Create object to convert categorical values to index values
     val categoricalIndexerArray =
@@ -137,6 +128,20 @@ object DTCensusIncomeExample extends SharedSparkContext {
         .replace("feature " + i + " ", fields(featureFieldIndexes(i)) + " ")
 
     println(s"Learned classification tree model:\n $treeModelString")
+
+    val vectorElem = functions.udf((x: Vector, i: Integer) => x(i))
+    val predictionsExpanded = predictions
+      .withColumn("rawPrediction0", vectorElem(predictions.col("rawPrediction"), functions.lit(0)))
+      .withColumn("rawPrediction1", vectorElem(predictions.col("rawPrediction"), functions.lit(1)))
+      .withColumn("score0", vectorElem(predictions.col("probability"), functions.lit(0)))
+      .withColumn("score1", vectorElem(predictions.col("probability"), functions.lit(1)))
+
+    val plot = Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(500d))
+      .withDataFrame(predictionsExpanded)
+      .mark(Line)
+      .encodeX("age", Ordinal)
+      .encodeY("score0", Quantitative, aggregate = AggOps.Average)
+      .show
   }
 
   def formatData(df: DataFrame, fields: Seq[String], continuousFieldIndexes: Seq[Int]): DataFrame = {
