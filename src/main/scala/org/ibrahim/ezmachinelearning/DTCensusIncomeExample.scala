@@ -131,16 +131,17 @@ object DTCensusIncomeExample extends SharedSparkContext {
 
     val vectorElem = functions.udf((x: Vector, i: Integer) => x(i))
     val predictionsExpanded = predictions
+      .where("indexedLabel = prediction")
       .withColumn("rawPrediction0", vectorElem(predictions.col("rawPrediction"), functions.lit(0)))
       .withColumn("rawPrediction1", vectorElem(predictions.col("rawPrediction"), functions.lit(1)))
       .withColumn("score0", vectorElem(predictions.col("probability"), functions.lit(0)))
       .withColumn("score1", vectorElem(predictions.col("probability"), functions.lit(1)))
 
-    val plot = Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(500d))
+    Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(500d))
       .withDataFrame(predictionsExpanded)
       .mark(Line)
       .encodeX("age", Ordinal)
-      .encodeY("score0", Quantitative, aggregate = AggOps.Average)
+      .encodeY("score1", Quantitative, aggregate = AggOps.Average)
       .show
   }
 
