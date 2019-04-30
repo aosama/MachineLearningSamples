@@ -5,16 +5,15 @@ import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, Deci
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
-import org.apache.spark.sql.{DataFrame, functions}
+import org.ibrahim.ezmachinelearning.helpers.CommonFunctions._
 import vegas.sparkExt._
 import vegas.{AggOps, Line, Quantitative, Vegas}
-import org.apache.spark.ml.linalg.Vector
 import vegas._
 
 object DTCensusIncomeExample extends SharedSparkContext {
 
   def main(args: Array[String]): Unit = {
-    val fields = Seq(
+    var fields = Seq(
       "age",
       "workclass",
       "fnlwgt",
@@ -30,8 +29,8 @@ object DTCensusIncomeExample extends SharedSparkContext {
       "hours-per-week",
       "native-country"
     )
-    val categoricalFieldIndexes = Seq(1, 3, 5, 6, 7, 8, 9, 13)
-    val continuousFieldIndexes = Seq(0, 2, 4, 10, 11, 12)
+    var categoricalFieldIndexes = Seq(1, 3, 5, 6, 7, 8, 9, 13)
+    var continuousFieldIndexes = Seq(0, 2, 4, 10, 11, 12)
 
     // Create dataframes to hold census income data
     // Data retrieved from http://archive.ics.uci.edu/ml/datasets/Census+Income
@@ -42,7 +41,12 @@ object DTCensusIncomeExample extends SharedSparkContext {
     trainingData = formatData(trainingData, fields, continuousFieldIndexes)
     testData = formatData(testData, fields, continuousFieldIndexes)
 
-    trainingData.printSchema()
+    // Exclude redundant and weighted attributes from feature vector
+    val (fieldsUpdated, categoricalFieldIndexesUpdated, continuousFieldIndexesUpdated) = removeFields(
+      fields, categoricalFieldIndexes, continuousFieldIndexes, "education-num", "relationship", "fnlwgt")
+    fields = fieldsUpdated
+    categoricalFieldIndexes = categoricalFieldIndexesUpdated
+    continuousFieldIndexes = continuousFieldIndexesUpdated
 
     // Create object to convert categorical values to index values
     val categoricalIndexerArray =
@@ -66,7 +70,9 @@ object DTCensusIncomeExample extends SharedSparkContext {
     val dt = new DecisionTreeClassifier()
       .setLabelCol("indexedLabel")
       .setFeaturesCol("features")
-      .setMaxBins(42) // Since feature "native-country" contains 42 distinct values, need to increase max bins.
+      .setMaxBins(42) // Since feature "native-country" contains 42 distinct values, need to increase max bins to at least 42.
+      .setMaxDepth(5)
+      .setImpurity("gini")
 
     // Create object to convert indexed labels back to actual labels for predictions
     val labelConverter = new IndexToString()
@@ -87,21 +93,6 @@ object DTCensusIncomeExample extends SharedSparkContext {
     // Test the model
     val predictions = model.transform(testData)
 
-    predictions.select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
-      .show()
-    val wrongPredictions = predictions
-      .select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
-      .where("indexedLabel != prediction")
-    wrongPredictions.show()
-
-    // Show the label and all the categorical features mapped to indexes
-    val indexedData = new Pipeline()
-      .setStages(indexerArray)
-      .fit(trainingData)
-      .transform(trainingData)
-    indexedData.select("indexedLabel", "label").distinct().sort("indexedLabel").show()
-    showCategories(indexedData, fields, categoricalFieldIndexes)
-
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("indexedLabel")
       .setPredictionCol("prediction")
@@ -119,6 +110,11 @@ object DTCensusIncomeExample extends SharedSparkContext {
 
     val treeModel = model.stages(stageArray.length - 2).asInstanceOf[DecisionTreeClassificationModel]
 
+    val featureImportances = treeModel.featureImportances.toArray.zipWithIndex.map(x => Tuple2(fields(x._2), x._1)).sortWith(_._2 > _._2)
+    println("Feature importances sorted:")
+    featureImportances.foreach(x => println(x._1 + ": " + x._2))
+    println()
+
     // Print out the tree with actual column names for features
     var treeModelString = treeModel.toDebugString
 
@@ -129,50 +125,40 @@ object DTCensusIncomeExample extends SharedSparkContext {
 
     println(s"Learned classification tree model:\n $treeModelString")
 
-    val vectorElem = functions.udf((x: Vector, i: Integer) => x(i))
-    val predictionsExpanded = predictions
-      .where("indexedLabel = prediction")
-      .withColumn("rawPrediction0", vectorElem(predictions.col("rawPrediction"), functions.lit(0)))
-      .withColumn("rawPrediction1", vectorElem(predictions.col("rawPrediction"), functions.lit(1)))
-      .withColumn("score0", vectorElem(predictions.col("probability"), functions.lit(0)))
-      .withColumn("score1", vectorElem(predictions.col("probability"), functions.lit(1)))
+    predictions.select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
+      .show()
+    val wrongPredictions = predictions
+      .select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
+      .where("indexedLabel != prediction")
+    wrongPredictions.show()
 
-    Vegas("Age and Income" , width=Option.apply(800d), height=Option.apply(500d))
-      .withDataFrame(predictionsExpanded)
+    // Show the label and all the categorical features mapped to indexes
+    val indexedData = new Pipeline()
+      .setStages(indexerArray)
+      .fit(trainingData)
+      .transform(trainingData)
+    indexedData.select("indexedLabel", "label").distinct().sort("indexedLabel").show()
+    showCategories(indexedData, fields, categoricalFieldIndexes, 100)
+
+    // Partial dependence plots
+    val predictionsEducation = predictionsForPartialDependencePlot(predictions.schema, indexedData, testData, model, "education")
+    val predictionsMaritalStatus = predictionsForPartialDependencePlot(predictions.schema, indexedData, testData, model, "marital-status")
+
+    val predictionsEducationExpanded = expandPredictions(predictionsEducation)
+    val predictionsMaritalStatusExpanded = expandPredictions(predictionsMaritalStatus)
+
+    Vegas("Education and Income" , width=Option.apply(800d), height=Option.apply(500d))
+      .withDataFrame(predictionsEducationExpanded)
       .mark(Line)
-      .encodeX("age", Ordinal)
+      .encodeX("education", Ordinal)
       .encodeY("score1", Quantitative, aggregate = AggOps.Average)
       .show
-  }
 
-  def formatData(df: DataFrame, fields: Seq[String], continuousFieldIndexes: Seq[Int]): DataFrame = {
-    var data = df
-
-    // Trim leading spaces from data
-    for (colName <- data.columns)
-      data = data.withColumn(colName, functions.ltrim(functions.col(colName)))
-
-    // Assign column names
-    for (i <- fields.indices)
-      data = data.withColumnRenamed("_c" + i, fields(i))
-
-    data = data.withColumnRenamed("_c14", "label")
-
-    // Convert continuous values from string to double
-    for (i <- continuousFieldIndexes) {
-      data = data.withColumn(fields(i), functions.col(fields(i)).cast("double"))
-    }
-
-    // Remove '.' character from label
-    data = data.withColumn("label", functions.regexp_replace(functions.col("label"), "\\.", ""))
-
-    data
-  }
-
-  def showCategories(df: DataFrame, fields: Seq[String], categoricalFieldIndexes: Seq[Int]): Unit = {
-    for (i <- categoricalFieldIndexes) {
-      val colName = fields(i)
-      df.select(colName + "Indexed", colName).distinct().sort(colName + "Indexed").show(100)
-    }
+    Vegas("Marital Status and Income" , width=Option.apply(800d), height=Option.apply(500d))
+      .withDataFrame(predictionsMaritalStatusExpanded)
+      .mark(Line)
+      .encodeX("marital-status", Ordinal)
+      .encodeY("score1", Quantitative, aggregate = AggOps.Average)
+      .show
   }
 }
