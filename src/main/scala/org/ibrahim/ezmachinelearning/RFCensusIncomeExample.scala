@@ -5,12 +5,15 @@ import org.apache.spark.ml.classification.{RandomForestClassificationModel, Rand
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
-import org.apache.spark.sql.{DataFrame, functions}
+import org.ibrahim.ezmachinelearning.helpers.CommonFunctions._
+import vegas.sparkExt._
+import vegas.{AggOps, Line, Quantitative, Vegas}
+import vegas._
 
 object RFCensusIncomeExample extends SharedSparkContext {
 
   def main(args: Array[String]): Unit = {
-    val fields = Seq(
+    var fields = Seq(
       "age",
       "workclass",
       "fnlwgt",
@@ -26,8 +29,8 @@ object RFCensusIncomeExample extends SharedSparkContext {
       "hours-per-week",
       "native-country"
     )
-    val categoricalFieldIndexes = Seq(1, 3, 5, 6, 7, 8, 9, 13)
-    val continuousFieldIndexes = Seq(0, 2, 4, 10, 11, 12)
+    var categoricalFieldIndexes = Seq(1, 3, 5, 6, 7, 8, 9, 13)
+    var continuousFieldIndexes = Seq(0, 2, 4, 10, 11, 12)
 
     // Create dataframes to hold census income data
     // Data retrieved from http://archive.ics.uci.edu/ml/datasets/Census+Income
@@ -37,6 +40,13 @@ object RFCensusIncomeExample extends SharedSparkContext {
     // Format the data
     trainingData = formatData(trainingData, fields, continuousFieldIndexes)
     testData = formatData(testData, fields, continuousFieldIndexes)
+
+    // Exclude redundant and weighted attributes from feature vector
+    val (fieldsUpdated, categoricalFieldIndexesUpdated, continuousFieldIndexesUpdated) = removeFields(
+      fields, categoricalFieldIndexes, continuousFieldIndexes, "education-num", "relationship", "fnlwgt")
+    fields = fieldsUpdated
+    categoricalFieldIndexes = categoricalFieldIndexesUpdated
+    continuousFieldIndexes = continuousFieldIndexesUpdated
 
     // Create object to convert categorical values to index values
     val categoricalIndexerArray =
@@ -56,11 +66,14 @@ object RFCensusIncomeExample extends SharedSparkContext {
       .setInputCols((categoricalFieldIndexes.map(i => fields(i) + "Indexed") ++ continuousFieldIndexes.map(i => fields(i))).toArray)
       .setOutputCol("features")
 
-    // Create random decision forest
-    val rf = new RandomForestClassifier()
+    // Create decision tree
+    val dt = new RandomForestClassifier()
       .setLabelCol("indexedLabel")
       .setFeaturesCol("features")
-      .setMaxBins(42) // Since feature "native-country" contains 42 distinct values, need to increase max bins.
+      .setNumTrees(50)
+      .setMaxBins(100) // Since feature "native-country" contains 42 distinct values, need to increase max bins to at least 42.
+      .setMaxDepth(10)
+      .setImpurity("gini")
 
     // Create object to convert indexed labels back to actual labels for predictions
     val labelConverter = new IndexToString()
@@ -70,7 +83,7 @@ object RFCensusIncomeExample extends SharedSparkContext {
 
     // Array of stages to run in pipeline
     val indexerArray = Array(labelIndexer) ++ categoricalIndexerArray
-    val stageArray = indexerArray ++ Array(vectorAssembler, rf, labelConverter)
+    val stageArray = indexerArray ++ Array(vectorAssembler, dt, labelConverter)
 
     val pipeline = new Pipeline()
       .setStages(stageArray)
@@ -80,21 +93,6 @@ object RFCensusIncomeExample extends SharedSparkContext {
 
     // Test the model
     val predictions = model.transform(testData)
-
-    predictions.select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
-      .show()
-    val wrongPredictions = predictions
-      .select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
-      .where("indexedLabel != prediction")
-    wrongPredictions.show()
-
-    // Show the label and all the categorical features mapped to indexes
-    val indexedData = new Pipeline()
-      .setStages(indexerArray)
-      .fit(trainingData)
-      .transform(trainingData)
-    indexedData.select("indexedLabel", "label").distinct().sort("indexedLabel").show()
-    showCategories(indexedData, fields, categoricalFieldIndexes)
 
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("indexedLabel")
@@ -113,6 +111,11 @@ object RFCensusIncomeExample extends SharedSparkContext {
 
     val treeModel = model.stages(stageArray.length - 2).asInstanceOf[RandomForestClassificationModel]
 
+    val featureImportances = treeModel.featureImportances.toArray.zipWithIndex.map(x => Tuple2(fields(x._2), x._1)).sortWith(_._2 > _._2)
+    println("Feature importances sorted:")
+    featureImportances.foreach(x => println(x._1 + ": " + x._2))
+    println()
+
     // Print out the tree with actual column names for features
     var treeModelString = treeModel.toDebugString
 
@@ -121,37 +124,42 @@ object RFCensusIncomeExample extends SharedSparkContext {
       treeModelString = treeModelString
         .replace("feature " + i + " ", fields(featureFieldIndexes(i)) + " ")
 
-    println(s"Learned classification forest model:\n $treeModelString")
-  }
+    println(s"Learned classification tree model:\n $treeModelString")
 
-  def formatData(df: DataFrame, fields: Seq[String], continuousFieldIndexes: Seq[Int]): DataFrame = {
-    var data = df
+    predictions.select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
+      .show()
+    val wrongPredictions = predictions
+      .select("label", Seq("predictedLabel" ,"indexedLabel", "prediction") ++ fields:_*)
+      .where("indexedLabel != prediction")
+    wrongPredictions.show()
 
-    // Trim leading spaces from data
-    for (colName <- data.columns)
-      data = data.withColumn(colName, functions.ltrim(functions.col(colName)))
+    // Show the label and all the categorical features mapped to indexes
+    val indexedData = new Pipeline()
+      .setStages(indexerArray)
+      .fit(trainingData)
+      .transform(trainingData)
+    indexedData.select("indexedLabel", "label").distinct().sort("indexedLabel").show()
+    showCategories(indexedData, fields, categoricalFieldIndexes, 100)
 
-    // Assign column names
-    for (i <- fields.indices)
-      data = data.withColumnRenamed("_c" + i, fields(i))
+    // Partial dependence plots
+    val predictionsEducation = predictionsForPartialDependencePlot(predictions.schema, indexedData, testData, model, "education")
+    val predictionsMaritalStatus = predictionsForPartialDependencePlot(predictions.schema, indexedData, testData, model, "marital-status")
 
-    data = data.withColumnRenamed("_c14", "label")
+    val predictionsEducationExpanded = expandPredictions(predictionsEducation)
+    val predictionsMaritalStatusExpanded = expandPredictions(predictionsMaritalStatus)
 
-    // Convert continuous values from string to double
-    for (i <- continuousFieldIndexes) {
-      data = data.withColumn(fields(i), functions.col(fields(i)).cast("double"))
-    }
+    Vegas("Education and Income" , width=Option.apply(800d), height=Option.apply(500d))
+      .withDataFrame(predictionsEducationExpanded)
+      .mark(Line)
+      .encodeX("education", Ordinal)
+      .encodeY("score1", Quantitative, aggregate = AggOps.Average)
+      .show
 
-    // Remove '.' character from label
-    data = data.withColumn("label", functions.regexp_replace(functions.col("label"), "\\.", ""))
-
-    data
-  }
-
-  def showCategories(df: DataFrame, fields: Seq[String], categoricalFieldIndexes: Seq[Int]): Unit = {
-    for (i <- categoricalFieldIndexes) {
-      val colName = fields(i)
-      df.select(colName + "Indexed", colName).distinct().sort(colName + "Indexed").show(100)
-    }
+    Vegas("Marital Status and Income" , width=Option.apply(800d), height=Option.apply(500d))
+      .withDataFrame(predictionsMaritalStatusExpanded)
+      .mark(Line)
+      .encodeX("marital-status", Ordinal)
+      .encodeY("score1", Quantitative, aggregate = AggOps.Average)
+      .show
   }
 }
