@@ -29,6 +29,10 @@ Uses the Census Income data set.
 How to handle multiple categorical and continuous features on a real-life data set.
 Uses the Census Income data set.
 
+### [Predicting Income Based on Census Data Using Random Decision Forest With Surrogate Decision Tree](https://github.com/aosama/MachineLearningSamples/blob/master/src/main/scala/org/ibrahim/ezmachinelearning/RFWithSurrogateCensusIncomeExample.scala)
+How to handle multiple categorical and continuous features on a real-life data set.
+Uses the Census Income data set.
+
 ## Data Sets References
 
 #### [Census Income DataSet](http://archive.ics.uci.edu/ml/datasets/Census+Income)
